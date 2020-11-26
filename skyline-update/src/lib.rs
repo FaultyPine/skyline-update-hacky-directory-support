@@ -87,7 +87,7 @@ fn update<I>(ip: IpAddr, response: &UpdateResponse, installer: &I) -> bool
         if path.exists() && Path::new("sd:/installing.tmpfile").exists() && path.extension().unwrap_or_default() != "nro" {
             continue;
         }
-        match TcpStream::connect((ip, PORT + 1)) {
+        match TcpStream::connect_timeout(&std::net::SocketAddr::new(ip, PORT + 1), std::time::Duration::new(10, 0)) { 
             Ok(mut stream) => {
                 let mut buf = vec![];
                 let _ = stream.write_all(&u64::to_be_bytes(file.download_index));
@@ -126,7 +126,7 @@ fn update<I>(ip: IpAddr, response: &UpdateResponse, installer: &I) -> bool
 pub fn custom_check_update<I>(ip: IpAddr, name: &str, version: &str, allow_beta: bool, installer: &I) -> bool
     where I: Installer,
 {
-    match TcpStream::connect((ip, PORT)) {
+    match TcpStream::connect_timeout(&std::net::SocketAddr::new(ip, PORT), std::time::Duration::new(10, 0)) {
         Ok(mut stream) =>  {
             if let Ok(packet) = serde_json::to_string(&Request::Update {
                 beta: Some(allow_beta),
@@ -196,7 +196,7 @@ pub fn check_update(ip: IpAddr, name: &str, version: &str, allow_beta: bool) -> 
 }
 
 pub fn get_update_info(ip: IpAddr, name: &str, version: &str, allow_beta: bool) -> Option<UpdateResponse> {
-    match TcpStream::connect((ip, PORT)) {
+    match TcpStream::connect_timeout(&std::net::SocketAddr::new(ip, PORT), std::time::Duration::new(10, 0)) {
         Ok(mut stream) =>  {
             if let Ok(packet) = serde_json::to_string(&Request::Update {
                 beta: Some(allow_beta),
