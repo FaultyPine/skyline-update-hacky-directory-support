@@ -31,7 +31,7 @@ impl Installer for DefaultInstaller {
 impl Installer for DefaultInstaller {
     fn should_update(&self, response: &UpdateResponse) -> bool {
 
-        if Path::new("sd:/is_restart_installing.txt").exists() {
+        if Path::new("sd:/installing.tmpfile").exists() {
             return true;
         }
 
@@ -63,6 +63,20 @@ pub trait Installer {
 fn update<I>(ip: IpAddr, response: &UpdateResponse, installer: &I) -> bool
     where I: Installer,
 {
+
+    /* Remove dir(s) before installing. This makes sure that even if you remove files in your folders it will update properly */
+    if !Path::new("sd:/installing.tmpfile").exists() {
+        for file in &response.required_files {
+            if let update_protocol::InstallLocation::AbsolutePath(p) = &file.install_location {
+                let p = Path::new(&p);
+                if p.is_dir() && p.exists() {
+                    println!("Deleting folder before update: {:#?}", p);
+                    let _ = std::fs::remove_dir_all(p);
+                }
+            }
+        }
+    }
+
     for file in &response.required_files {
 
         let path: PathBuf = match &file.install_location {
@@ -70,7 +84,7 @@ fn update<I>(ip: IpAddr, response: &UpdateResponse, installer: &I) -> bool
             _ => return false
         };
 
-        if path.exists() {
+        if path.exists() && Path::new("sd:/installing.tmpfile").exists() && path.extension().unwrap_or_default() != "nro" {
             continue;
         }
         match TcpStream::connect((ip, PORT + 1)) {
@@ -93,19 +107,18 @@ fn update<I>(ip: IpAddr, response: &UpdateResponse, installer: &I) -> bool
             Err(e) => {
                 println!("[updater] Failed to connect to port {}", PORT + 1);
                 println!("Err: {}", e);
-                println!("On file: {:#?}", file);
                 /* Hacky solution to descriptor table filling up */
                 if e.to_string().contains("os error 24") {
-                    std::fs::File::create(Path::new("sd:/is_restart_installing.txt")).unwrap();
+                    println!("Recovering download...");
+                    std::fs::File::create(Path::new("sd:/installing.tmpfile")).unwrap();
                     skyline::nn::oe::RestartProgramNoArgs();
                 }
                 return false
             }
         };
-        std::thread::sleep(std::time::Duration::from_millis(5));
     }
     println!("[updater] finished updating plugin.");
-    let _ = std::fs::remove_file("sd:/is_restart_installing.txt");
+    let _ = std::fs::remove_file("sd:/installing.tmpfile");
     true
 }
 

@@ -137,14 +137,20 @@ fn main() -> eyre::Result<()> {
                 Ok(notify::DebouncedEvent::Error(err, None)) => {
                     println!("File watch error: {}", err);
                 }
-                Ok(_) => {
-                    println!("Change detected: refreshing plugins...");
-                    // clear plugins (close sockets)
-                    plugins = Vec::with_capacity(0);
-                    // setup new plugins
-                    let (x, y) = setup_plugin_ports()?;
-                    plugins = x;
-                    files = y;
+                Ok(event) => {
+                    println!("event: {:#?}", event);
+                    if let notify::DebouncedEvent::Write(path) = event {
+                        if path.file_name().unwrap_or_default() == "plugin.toml" {
+                            println!("Change detected: refreshing plugins...");
+                            // clear plugins (close sockets)
+                            plugins = Vec::with_capacity(0);
+                            // setup new plugins
+                            let (x, y) = setup_plugin_ports()?;
+                            plugins = x;
+                            files = y;
+                            println!("Finished refreshing plugins.");
+                        }
+                    }
                 },
                 Err(_) => {}
             }

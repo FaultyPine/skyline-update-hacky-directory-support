@@ -141,7 +141,6 @@ pub fn folder_to_plugin(dir: io::Result<fs::DirEntry>) -> eyre::Result<Option<Pl
 
         /* cwd joined with our current "plugin" joined with our current folder. */
         let root_path = &std::env::current_dir().unwrap().join(path.join(Path::new(folder.root_name.to_str().unwrap())));
-        println!("Processing {:#?}", root_path.clone());
 
         /* recurse through folder and push each file onto files vector. */
         for file_from_folder in walkdir::WalkDir::new(root_path).contents_first(true) {
@@ -163,6 +162,7 @@ pub fn folder_to_plugin(dir: io::Result<fs::DirEntry>) -> eyre::Result<Option<Pl
 
             files.insert(0, file_data)
         }
+        files.push( ( folder.install_root_location, vec![] ) );
 
     }
     
