@@ -65,17 +65,19 @@ fn update<I>(ip: IpAddr, response: &UpdateResponse, installer: &I) -> bool
 {
 
     /* Remove dir(s) before installing. This makes sure that even if you remove files in your folders it will update properly */
-    if !Path::new("sd:/installing.tmpfile").exists() {
+    let mut folder_paths = vec![];
         for file in &response.required_files {
             if let update_protocol::InstallLocation::AbsolutePath(p) = &file.install_location {
-                let p = Path::new(&p);
-                if p.is_dir() && p.exists() {
-                    println!("Deleting folder before update: {:#?}", p);
-                    let _ = std::fs::remove_dir_all(p);
+                let p = Path::new(p);
+                if p.is_dir() && p.exists() { // see hosted_plugins.rs line 165
+                    folder_paths.push(p);
+                    if !Path::new("sd:/installing.tmpfile").exists() {
+                        println!("Deleting folder before update: {:#?}", p);
+                        let _ = std::fs::remove_dir_all(p);
+                    }
                 }
             }
         }
-    }
 
     for file in &response.required_files {
 
@@ -84,20 +86,21 @@ fn update<I>(ip: IpAddr, response: &UpdateResponse, installer: &I) -> bool
             _ => return false
         };
 
-        if path.exists() && Path::new("sd:/installing.tmpfile").exists() && path.extension().unwrap_or_default() != "nro" {
+        /* Skip file if its already installed, we are in the process of downloading, and its a file from a folder */
+        if path.exists() && Path::new("sd:/installing.tmpfile").exists() && folder_paths.iter().any(|&x| path.starts_with(x)) {
             continue;
         }
+        println!("Downloading {:#?}", path.clone());
         match TcpStream::connect_timeout(&std::net::SocketAddr::new(ip, PORT + 1), std::time::Duration::new(10, 0)) { 
             Ok(mut stream) => {
-                let mut buf = vec![];
+                let mut buf = Vec::new();
                 let _ = stream.write_all(&u64::to_be_bytes(file.download_index));
                 if let Err(e) = stream.read_to_end(&mut buf) {
                     println!("[updater] Error downloading file: {}", e);
+                    println!("On file: {:#?}", file);
                     return false
                 }
 
-                println!("Downloaded {:#?}", path.clone());
-    
                 if installer.install_file(path, buf).is_err() {
                     return false
                 }
@@ -107,6 +110,7 @@ fn update<I>(ip: IpAddr, response: &UpdateResponse, installer: &I) -> bool
             Err(e) => {
                 println!("[updater] Failed to connect to port {}", PORT + 1);
                 println!("Err: {}", e);
+                println!("On file: {:#?}", file);
                 /* Hacky solution to descriptor table filling up */
                 if e.to_string().contains("os error 24") {
                     println!("Recovering download...");
