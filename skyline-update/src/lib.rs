@@ -144,7 +144,10 @@ pub fn custom_check_update<I>(ip: IpAddr, name: &str, version: &str, allow_beta:
 
                 if let Ok(response) = serde_json::from_str::<UpdateResponse>(&string) {
                     match response.code {
-                        ResponseCode::NoUpdate => return false,
+                        ResponseCode::NoUpdate => {
+                            println!("[Updater] No Update Needed.");
+                            return false;
+                        },
                         ResponseCode::Update => {
                             if installer.should_update(&response) {
                                 let success = update(ip, &response, installer);
