@@ -90,7 +90,7 @@ fn update<I>(ip: IpAddr, response: &UpdateResponse, installer: &I) -> bool
         if path.exists() && Path::new("sd:/installing.tmpfile").exists() && folder_paths.iter().any(|&x| path.starts_with(x)) {
             continue;
         }
-        println!("Downloading {:#?}", path.clone());
+        println!("Downloading ({}/{}): {:#?}", file.download_index, response.required_files.len()-1, path.clone());
         match TcpStream::connect_timeout(&std::net::SocketAddr::new(ip, PORT + 1), std::time::Duration::new(10, 0)) { 
             Ok(mut stream) => {
                 let mut buf = Vec::new();
