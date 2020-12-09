@@ -91,7 +91,7 @@ fn update<I>(ip: IpAddr, response: &UpdateResponse, installer: &I) -> bool
             continue;
         }
         println!("Downloading ({}/{}): {:#?}", file.download_index+1, response.required_files.len()-1, path.clone());
-        match TcpStream::connect_timeout(&std::net::SocketAddr::new(ip, PORT + 1), std::time::Duration::new(5, 0)) { 
+        match TcpStream::connect_timeout(&std::net::SocketAddr::new(ip, PORT + 1), std::time::Duration::new(1, 0)) { 
             Ok(mut stream) => {
                 let mut buf = Vec::new();
                 let _ = stream.write_all(&u64::to_be_bytes(file.download_index));
@@ -130,7 +130,7 @@ fn update<I>(ip: IpAddr, response: &UpdateResponse, installer: &I) -> bool
 pub fn custom_check_update<I>(ip: IpAddr, name: &str, version: &str, allow_beta: bool, installer: &I) -> bool
     where I: Installer,
 {
-    match TcpStream::connect_timeout(&std::net::SocketAddr::new(ip, PORT), std::time::Duration::new(5, 0)) {
+    match TcpStream::connect_timeout(&std::net::SocketAddr::new(ip, PORT), std::time::Duration::new(1, 0)) {
         Ok(mut stream) =>  {
             if let Ok(packet) = serde_json::to_string(&Request::Update {
                 beta: Some(allow_beta),
@@ -203,7 +203,7 @@ pub fn check_update(ip: IpAddr, name: &str, version: &str, allow_beta: bool) -> 
 }
 
 pub fn get_update_info(ip: IpAddr, name: &str, version: &str, allow_beta: bool) -> Option<UpdateResponse> {
-    match TcpStream::connect_timeout(&std::net::SocketAddr::new(ip, PORT), std::time::Duration::new(5, 0)) {
+    match TcpStream::connect_timeout(&std::net::SocketAddr::new(ip, PORT), std::time::Duration::new(1, 0)) {
         Ok(mut stream) =>  {
             if let Ok(packet) = serde_json::to_string(&Request::Update {
                 beta: Some(allow_beta),
